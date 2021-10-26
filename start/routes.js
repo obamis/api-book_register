@@ -18,6 +18,8 @@ const Route = use("Route");
 
 Route.get("book/:id", "BookController.show");
 Route.get("books", "BookController.index");
+Route.get("books/:gender", "BookController.returnByGender");
+
 Route.post("book", "BookController.store");
 Route.put("book/:id", "BookController.update");
 Route.delete("book/:id", "BookController.delete");

@@ -6,7 +6,12 @@ class BookController {
     try {
       let book = await Books.findOrFail(params.id);
 
-      if (book) return response.status(200).send(book);
+      if (book.book_status !== 0) return response.status(200).send(book);
+      else {
+        return response.status(200).send({
+          Unavaiable_book: "This book is not available for consultation.",
+        });
+      }
     } catch (error) {
       return response
         .status(404)
@@ -15,10 +20,48 @@ class BookController {
   }
 
   async index({ request, response }) {
-    let books = await Books.all();
+    // let books = await Books.all();
+
+    let books = await Books.query()
+      .select(
+        "id",
+        "author_name",
+        "author_lastName",
+        "title",
+        "gender",
+        "sinopsys",
+        "pages"
+      )
+      .where("book_status", "=", true)
+      .fetch();
 
     return books;
   }
+
+  async returnByGender({ request, response, params }) {
+    try {
+      let gender = params.gender.toUpperCase();
+
+      let books = await Books.query()
+        .select(
+          "id",
+          "author_name",
+          "author_lastName",
+          "title",
+          "gender",
+          "sinopsys",
+          "pages"
+        )
+        .where("gender", "=", gender)
+        .andWhere("book_status", "=", true)
+        .fetch();
+
+      return books;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   async store({ request, response }) {
     const data = request.body;
 
@@ -26,6 +69,7 @@ class BookController {
 
     data.author_name = data.author_name.toUpperCase();
     data.author_lastName = data.author_lastName.toUpperCase();
+    data.gender = data.gender.toUpperCase();
 
     try {
       let book = await Books.create(data);
@@ -54,7 +98,18 @@ class BookController {
 
   async update({ request, response, params }) {
     try {
-      let data = request.body;
+      let data = request.only([
+        "author_name",
+        "author_lastName",
+        "title",
+        "gender",
+        "sinopsys",
+        "pages",
+      ]);
+
+      data.author_name = data.author_name.toUpperCase();
+      data.author_lastName = data.author_lastName.toUpperCase();
+      data.gender = data.gender.toUpperCase();
 
       const book = await Books.findOrFail(params.id);
 
@@ -81,9 +136,28 @@ class BookController {
     try {
       const book = await Books.findOrFail(params.id);
 
-      await book.delete();
+      if (book.book_status === false) {
+        return response
+          .status(200)
+          .send({ book_status: "Book already deleted" });
+      } else {
+        //soft-delete
+        book.book_status = false;
 
-      return response.status(200).send({ livro_removido: book });
+        // await book.delete();
+        await book.save();
+
+        let removed_book = {
+          id: book.id,
+          author: `${book.author_lastName},${book.author_name}`,
+          title: book.title,
+          gender: book.gender,
+          sinopsys: book.sinopsys,
+          pages: book.pages,
+        };
+
+        return response.status(200).send({ removed_book: removed_book });
+      }
     } catch (error) {
       console.log(error);
       return response.status(404).send({ error: "Book not found" });

@@ -6,8 +6,10 @@ class BookController {
     try {
       let book = await Books.findOrFail(params.id);
 
-      if (book.book_status !== 0) return response.status(200).send(book);
-      else {
+      if (book.book_status !== 0) {
+        book.book_status = "Available";
+        return response.status(200).send(book);
+      } else {
         return response.status(200).send({
           Unavaiable_book: "This book is not available for consultation.",
         });
@@ -22,20 +24,25 @@ class BookController {
   async index({ request, response }) {
     // let books = await Books.all();
 
-    let books = await Books.query()
-      .select(
-        "id",
-        "author_name",
-        "author_lastName",
-        "title",
-        "gender",
-        "sinopsys",
-        "pages"
-      )
-      .where("book_status", "=", true)
-      .fetch();
+    try {
+      let books = await Books.query()
+        .select(
+          "id",
+          "author_name",
+          "author_lastName",
+          "title",
+          "gender",
+          "sinopsys",
+          "pages"
+        )
+        .where("book_status", "=", 1)
+        .fetch();
 
-    return books;
+      return books;
+    } catch (error) {
+      console.log(error);
+      return response.status(400).send("Erro while listing books");
+    }
   }
 
   async returnByGender({ request, response, params }) {
@@ -53,7 +60,7 @@ class BookController {
           "pages"
         )
         .where("gender", "=", gender)
-        .andWhere("book_status", "=", true)
+        .andWhere("book_status", "=", 1)
         .fetch();
 
       return books;
@@ -136,16 +143,15 @@ class BookController {
     try {
       const book = await Books.findOrFail(params.id);
 
-      if (book.book_status === false) {
+      if (book.book_status === 0) {
         return response
           .status(200)
           .send({ book_status: "Book already deleted" });
       } else {
         //soft-delete
         book.book_status = false;
-
-        // await book.delete();
         await book.save();
+        // await book.delete();
 
         let removed_book = {
           id: book.id,
